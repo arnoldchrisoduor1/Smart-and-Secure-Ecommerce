@@ -1,0 +1,167 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Primary database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecommerce_postgres
+    environment:
+      POSTGRES_DB: ecommerce
+      POSTGRES_USER: ecommerce_user
+      POSTGRES_PASSWORD: ecommerce_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d/
+    networks:
+      - ecommerce_network
+
+  # Redis - Caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: ecommerce_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ecommerce_redis_pass
+    volumes:
+      - redis_data:/data
+    networks:
+      - ecommerce_network
+
+  # Neo4j - Graph database for recommendations
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: ecommerce_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/ecommerce_neo4j_pass
+      NEO4J_PLUGINS: '["graph-data-science"]'
+      NEO4J_apoc_export_file_enabled: true
+      NEO4J_apoc_import_file_enabled: true
+      NEO4J_apoc_import_file_use__neo4j__config: true
+    ports:
+      - "7474:7474"  # Neo4j Browser
+      - "7687:7687"  # Bolt protocol
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_conf:/var/lib/neo4j/conf
+    networks:
+      - ecommerce_network
+
+  # Zookeeper - Required for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: ecommerce_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - ecommerce_network
+
+  # Kafka - Message broker for microservices
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: ecommerce_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - ecommerce_network
+
+  # Elasticsearch - Search and analytics
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: ecommerce_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - ecommerce_network
+
+  # Kibana - Elasticsearch UI
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: ecommerce_kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - ecommerce_network
+
+  # Kafka UI - Kafka management interface
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: ecommerce_kafka_ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    networks:
+      - ecommerce_network
+
+  # pgAdmin - PostgreSQL management interface
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ecommerce_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ecommerce.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - ecommerce_network
+
+  # Redis Commander - Redis management interface
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: ecommerce_redis_commander
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOSTS: local:redis:6379:1:ecommerce_redis_pass
+    ports:
+      - "8081:8081"
+    networks:
+      - ecommerce_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_conf:
+  kafka_data:
+  elasticsearch_data:
+  pgadmin_data:
+
+networks:
+  ecommerce_network:
+    driver: bridge
