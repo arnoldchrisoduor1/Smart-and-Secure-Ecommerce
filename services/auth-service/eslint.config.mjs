@@ -10,7 +10,21 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
+  // Replace eslintPluginPrettierRecommended with custom Prettier config
+  {
+    plugins: {
+      prettier: eslintPluginPrettierRecommended.plugins.prettier,
+    },
+    rules: {
+      ...eslintPluginPrettierRecommended.rules,
+      'prettier/prettier': [
+        'error',
+        {
+          endOfLine: 'auto', // This fixes the CRLF issue
+        },
+      ],
+    },
+  },
   {
     languageOptions: {
       globals: {
