@@ -52,3 +52,5 @@ async function bootstrap() {
   console.log(`API Docummentation: http://localhost:${port}/api/docs`);
 
 }
+
+bootstrap();
