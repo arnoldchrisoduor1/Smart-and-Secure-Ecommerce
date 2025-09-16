@@ -18,6 +18,37 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-    })
-  )
+    }),
+  );
+
+  const config = new DocummentBuilder()
+    .setTitle('Auth Service API')
+    .setDescription('Authentication and authorization microservice')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: 'auth-service',
+        brokers: [kafkaBroker],
+      },
+      consumer: {
+        groupId: 'auth-service-group',
+      },
+    },
+  });
+
+  await app.startAllMicroservices();
+  await app.listen(port);
+
+  console.log(`Auth service is running on: hhtp:/localhost:${port}`);
+  console.log(`API Docummentation: http://localhost:${port}/api/docs`);
+
 }
