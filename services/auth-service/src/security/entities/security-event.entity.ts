@@ -5,7 +5,7 @@ import {
     CreateDateColumn,
     ManyToOne,
     JoinColumn,
-    Index
+    Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
