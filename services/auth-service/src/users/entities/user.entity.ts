@@ -7,7 +7,7 @@ import {
     Index,
     OneToMany,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
+import { Exclude } from 'clas s-transformer';
 import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { SecurityEvent } from '../../security/entities/security-event.entity';
 
@@ -93,6 +93,7 @@ export class User {
     }
 
     canAttemptLogin(): boolean {
+        
         return !this.isLocked() && this.status === UserStatus.ACTIVE;
     }
 }
