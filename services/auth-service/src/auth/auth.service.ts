@@ -246,4 +246,52 @@ export class AuthService {
             expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
         };
     }
+
+    async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<void> {
+        const { currentPassword, newPassword } = changePasswordDto;
+
+        const user = await this.usersService.findById(userId);
+        if(!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        // validating the new password.
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isCurrentPasswordValid) {
+            throw new UnauthorizedException('Current password is Incorrect');
+        }
+
+        // validating the strenght of the new password
+        this.validatePasswordStrength(newPassword);
+
+
+        // Ensuring new password is different from current
+        const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+        if (isSamePassword) {
+            throw new BadRequestException('New password must be different from current password');
+        }
+
+        // hash new password.
+        const newPasswordHash = await bcrypt.hash(newPassword, 123);
+
+        // update password
+        await this.usersService.updatePassword(userId, newPasswordHash);
+
+        // revoing all refresh tokens  for security.
+        await this.revokeAllRefreshTokens(userId);
+
+        // now logging all the password change.
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.PASSWORD_CHANGED,
+            userId,
+            description: 'Password changed successfully',
+        });
+
+        // publish the password change event.
+        await this.eventsService.publishPasswordChanged({
+            userId,
+            email: user.email,
+            changedAt: new Date(),
+        });
+    }
 }
