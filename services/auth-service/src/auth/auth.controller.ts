@@ -91,6 +91,42 @@ export class AuthController {
     @ApiResponse({ status: 204, description: 'Password changed successfully' })
     @ApiResponse({ status: 401, description: 'Invalid current password' })
     async changePassword(@GetUser() user: User, @Body() changePasswordDto: ChangePasswordDto): Promise<void> {
-        await this.authService.changePassword(user.id, this.changePasswordDto);
+        await this.authService.changePassword(user.id, changePasswordDto);
+    }
+
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Requet password reset' })
+    @ApiResponse({ status: 204, description: 'Password reset email sent' })
+    async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto, @Req() request: Request): Promise<void> {
+        const ipAddress = req.ip;
+        await this.authService.forgotPassword(forgotPasswordDto, ipAddress);
+    }
+
+    @Post('reset-password')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Reset pasword with token' })
+    @ApiResponse({ status: 204, description: 'Password reset successfully' })
+    @ApiResponse({ status: 401, description: 'Invalid reset token' })
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto, @Req() req: Request): Promise<void> {
+        const ipAddress = req.ip;
+        await this.authService.resetPassword(resetPasswordDto, ipAddress)
+    }
+
+    @Post('verify-email')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Verify user email' })
+    @ApiResponse({ status: 204, description: 'Email verified successfully' })
+    @ApiResponse({ status: 401, description: 'Invalid verification token' })
+    async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto): Promise<void> {
+        await this.authService.verifyEmail(verifyEmailDto.token)
+    }
+
+    @Get('me')
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Gte current user info' })
+    @ApiResponse({ status: 200, description: 'User info retrieved succesfully' })
+    getCurrentUser(@GetUser() user: User) {
+        return user;
     }
 }
