@@ -377,4 +377,36 @@ export class AuthService {
             resetAt: new Date(),
         })
     }
+
+    async verifyEmail(token: string): Promise<void> {
+        const userId = await this.cacheManager.get<string>(`email_verification:${token}`);
+        if (!userId) {
+            throw new UnauthorizedException('Invalid or expired verification token');
+        }
+
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        // Update user verification status
+        await this.usersService.verifyEmail(userId);
+
+        // remove verification token.
+        await this.cacheManager.del(`email_verification:${token}`);
+
+        // log email verification.
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.EMAIL_VERIFIED,
+            userId,
+            description: 'Email verified successfully',
+        });
+
+        // publish email verified event
+        await this.eventsService.publishEmailVerified({
+            userId,
+            email: user.email,
+            verifiedAt: new Date(),
+        });
+    }
 }
