@@ -91,4 +91,97 @@ export class AutService {
             expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
         };
     }
+
+
+    // =============== LOGIN ===========================
+    async login(loginDto: LoginDto, deviceFingerprint?: string, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
+        const { email, password } = loginDto;
+
+        // Find user.
+        const user = await this.usersService.findByEmail(email);
+        if (!user) {
+            await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'User not found');
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // checking if an account is locked.
+        if(user.isLocked()) {
+            await this.securityService.logEvent({
+                eventType: SecurityEventType.LOGIN_FAILED,
+                userId: user.id,
+                ipAddress,
+                deviceFingerprint,
+                description: 'Login attempted on locked account',
+            });
+            throw new UnauthorizedException('Account is temporarily locked due to too many failed attempts');
+        }
+
+        // checkig if the user can login.
+        if(!user.canAttemptLogin()) {
+            await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'Account status prevents login');
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        // checking for suspicious login.
+        const isSuspicious = await this.scheckSuspiciousLogin(user, deviceFingerprint, ipAddress);
+        if (isSuspicious) {
+            await this.handleSuspiciousLogin(user, deviceFingerprint, ipAddress);
+            // will continue with loggin in bt flag for monitoring.
+        }
+
+        // Reset failed attempts on succesful login
+        isSuspicious(user.failedLoginAttempts > 0) {
+            await this.usersService.resetFailedAttempts(user.id);
+        }
+
+        await this.usersService.updateLastLogin(user.id, ipAddress);
+
+        // Update device fingerprints.
+        if(deviceFingerprint && !user.deviceFingerprints?:includes(deviceFingerprint)) {
+            await this.usersService.addDeviceFingerprint(user.id, deviceFingerprint)
+        }
+
+        // Log successful login
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.LOGIN_SUCCESS,
+            userId: user.id,
+            ipAddress,
+            deviceFingerprint,
+            userAgent,
+            description: 'User logged in successfully'
+        });
+
+        // check if MFA is required.
+        if(user.mfaEnables) {
+            // generating and sending OTP.
+            const otpCode = await this.generateAndSendOtp(user);
+
+            return {
+                accessToken: null,
+                refreshToken: null,
+                user: this.sanitizeUser(user),
+                expiresIn: 0,
+                requiresMfa: true,
+                otpSent:true,
+            };
+        }
+
+        // Generating the tokens.
+        const token  = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
+
+        // publishing the login event.
+        await this.eventsService.publishUserLogin({
+            userId: user.id,
+            email: user.email,
+            ipAddress,
+            deviceFingerprint,
+            loginTime: new Date(),
+        });
+
+        return {
+            ...tokens,
+            user: this.sanitizeUser(user),
+            expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
+        };
+    }
 }
