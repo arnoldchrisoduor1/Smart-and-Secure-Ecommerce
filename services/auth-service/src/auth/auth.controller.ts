@@ -82,4 +82,15 @@ export class AuthController {
 
         return this.authService.refreshToken(refreshToken, deviceFingerPrint, ipAddress);
     }
+
+    @Put('change-password')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Change user password' })
+    @ApiResponse({ status: 204, description: 'Password changed successfully' })
+    @ApiResponse({ status: 401, description: 'Invalid current password' })
+    async changePassword(@GetUser() user: User, @Body() changePasswordDto: ChangePasswordDto): Promise<void> {
+        await this.authService.changePassword(user.id, this.changePasswordDto);
+    }
 }
