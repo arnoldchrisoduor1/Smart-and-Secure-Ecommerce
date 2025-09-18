@@ -548,6 +548,30 @@ private async revokeAllRefreshTokens(userId: string): Promise<void> {
     await this.usersService.revokeAllRefreshTokens(userId);
 }
 
+private validatePasswordStrength(password: string): void {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?:{}|<>]/.test(password);
+
+    if(password.length < minLength) {
+        throw new BadRequestException(`Password must be at least ${minLength} characters long`);
+    }
+
+    if(!hasLowerCase) {
+        throw new BadRequestException('Password must contain at leat one lowe case letter');
+    }
+
+    if(!hasNumbers) {
+        throw new BadRequestException('Password must contain atleast one letter')
+    }
+
+    if (!hasSpecialChar) {
+      throw new BadRequestException('Password must contain at least one special character');
+    }
+}
+
 }
 
 
