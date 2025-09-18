@@ -589,6 +589,20 @@ private parseExpiration(expiration: string): number {
     }
 }
 
+private sanitizeUse(user: User) {
+    const { passwordHash, mfaSecret, ...sanitizedUser } = user;
+    return sanitizedUser;
+}
+
+
+async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.usersService.findEmail(email);
+    if (user && await bcrypt.compare(password, user.passwordHash)) {
+        return user;
+    }
+    return null;
+}
+
 }
 
 
