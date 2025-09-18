@@ -525,6 +525,21 @@ private async handleSuspiciousLogin(user: User, deviceFingerprint?: string, ipAd
     });
 }
 
+private async generateAndSendOtp(user: User): Promise<string> {
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // store in cache with 5 min expiration
+    await this.cacheManager.set(`otp$:${user.id}`, otpCode, 300);
+
+    // publish MFA required event
+    await this.eventsService.publishMfaRequired({
+        userId: user.id,
+        email: user.email,
+        otpCode,
+    });
+    return otpCode;
+}
+
 }
 
 
