@@ -449,7 +449,46 @@ private async generateTokens(user: User, deviceFingerprint?:string, ipAddress?: 
     };
 }
 
-private async handleFailedLogin()
+private async handleFailedLogin(email: string, ipAddress?: string, deviceFingerprint?: string, userId?: string): Promise<void> {
+    if (userId) {
+        const user = await this.usersService.incrementFailedAttempts(userId);
+
+        // locking account if maximum attempts are reached.
+        if (user.failedLoginAttempts >= this.MAX_FAILED_ATTEMPTS) {
+            const lockedUntil = new Date();
+            lockedUntil.setMinutes(lockedUntil.getMinutes() + this.LOCKOUT_DURATION_MINUTES)
+        
+
+        await this.usersService.lockAccount(userId, lockUntil);
+
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.ACCOUNT_LOCKED,
+            userId,
+            ipAddress,
+            deviceFingerprint,
+            description: `Account locked after ${this.MAX_FAILED_ATTEMPTS} failed attempts`,
+        });
+
+        // publish account locked event.
+        await this.eventsService.publishAccountLocked({
+            userId,
+            email,
+            lockedUntil: lockUntil,
+            reason: 'Tooo many failed attempts,'
+        });
+    }
+    }
+
+    // loggin the failed attempt.
+    await this.securityService.logEvent({
+        eventType: SecurityEventType.LOGIN_FAILED,
+        userId,
+        ipAddress,
+        deviceFingerprint,
+        description: reason || 'Failed login attempt',
+        metadata: { email },
+    });
+}
 
 }
 
