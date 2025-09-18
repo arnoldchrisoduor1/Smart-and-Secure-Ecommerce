@@ -34,4 +34,8 @@ export class AutService {
         private readonly configService: ConfigService,
         @Inject(CACHE_MANAGER) private cacheManager: Cache
     ) {}
+
+    async register(registerDto: RegisterDto, deviceFingerprint?: string, ipAddress?: string): Promise<AuthResponse> {
+        
+    }
 }
