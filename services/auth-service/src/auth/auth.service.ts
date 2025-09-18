@@ -36,6 +36,59 @@ export class AutService {
     ) {}
 
     async register(registerDto: RegisterDto, deviceFingerprint?: string, ipAddress?: string): Promise<AuthResponse> {
-        
+        const { email, password, firstName, lasttName } = registerDto;
+
+        // checking if the user already exists.
+        const existingUser = await this.usersService.findByEmail(email);
+        if (existingUser) {
+            throw new ConflictException('User with this email already exists');
+        }
+
+        // else we will validate the password strength
+        this.validatePasswordStrength(password);
+
+        const passwordHash = await bcrypt.hash(password, 12);
+
+        // creating the new user.
+        const user = await this.usersService.create({
+            email,
+            passwordHash,
+            firstName,
+            lastName,
+            deviceFingerprints: deviceFingerprint ? [deviceFingerprint] : [],
+        });
+
+        // generating the email verification token
+        const verificationToken = this.generateSecureToken();
+        await this.cacheManager.set(
+            `email_verification:${verificationToken}`,
+            user.id,
+            this.parseExpiration(this.EMAIL_VERIFICATION_TOKEN_EXPIRATION),
+        );
+
+        // logging the security event.
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.LOGIN_SUCCESS,
+            userId: user.id,
+            ipAddress,
+            deviceFingerprint,
+            description: 'User registered successfully',
+        });
+
+        await this.eventsService.publishUserRegistered({
+            userId: user.id,
+            email: user.email,
+            verificationToken
+        });
+
+        // Generating tokens.
+        const tokens = await this.generateTokens(user, deviceFingerprint, ipAddress);
+
+
+        return {
+            ...tokens,
+            user: this.sanitizeUser(user),
+            expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
+        };
     }
 }
