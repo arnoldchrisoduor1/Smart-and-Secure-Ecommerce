@@ -506,6 +506,25 @@ private async checkSuspiciousLogin(user: User, deviceFingerprint?: string, ipAdd
     return isNewDevice || (isNewLocation && isTooQuick);
 }
 
+private async handleSuspiciousLogin(user: User, deviceFingerprint?: string, ipAddress?: string): Promise<void> {
+    await this.securityService.logEvent({
+        eventType: SecurityEventType.SUSPICIOUS_LOGIN,
+        userId: user.id,
+        ipAddress,
+        deviceFingerprint,
+        description: 'Suspicious login detected - new device or location',
+    });
+
+    // Publish suspicious login events for notification.
+    await this.eventsService.publishSuspiciousLogin({
+        userId: user.id,
+        email: user.email,
+        ipAddress,
+        deviceFingerprint,
+        loginTime: new Date(),
+    });
+}
+
 }
 
 
