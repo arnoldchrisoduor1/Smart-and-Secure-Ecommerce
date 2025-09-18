@@ -18,7 +18,7 @@ import { RegisterDto, LoginDto, ChangePasswordDto, ForgotPasswordDto, ResetPassw
 
 
 @Injectable()
-export class AutService {
+export class AuthService {
     private readonly JWT_ACCESS_TOKEN_EXPIRATION = '15m';
     private readonly JWT_REFRESH_TOKEN_EXPIRATION = '7d';
     private readonly PASSWORD_RESET_TOKEN_EXPIRATION = '1h';
@@ -36,7 +36,7 @@ export class AutService {
     ) {}
 
     async register(registerDto: RegisterDto, deviceFingerprint?: string, ipAddress?: string): Promise<AuthResponse> {
-        const { email, password, firstName, lasttName } = registerDto;
+        const { email, password, firstName, lastName } = registerDto;
 
         // checking if the user already exists.
         const existingUser = await this.usersService.findByEmail(email);
@@ -167,7 +167,7 @@ export class AutService {
         }
 
         // Generating the tokens.
-        const token  = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
+        const tokens  = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
 
         // publishing the login event.
         await this.eventsService.publishUserLogin({
@@ -183,5 +183,32 @@ export class AutService {
             user: this.sanitizeUser(user),
             expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
         };
+    }
+
+
+    // ================ LOGOUT ======================
+    async logout(userId: string, refreshToken?: string): Promise<void> {
+        // we'll revoke the refresh token.
+        if(refreshToken) {
+            await this.revokeRefreshToken(refreshToken);
+        }
+
+        // now we add the access token to blacklist
+        const tokenKey = `blacklist:${userId}:${Date.now()}`;
+        await this.cacheManager.set(tokenKey, true, this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION))
+
+        // log the logout event.
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.LOGOUT,
+            userId,
+            description: 'User logged out',
+        });
+
+
+        // publish the logout event
+        await this.eventsService.publishUserLogout({
+            userId,
+            logoutTime: new Date(),
+        });
     }
 }
