@@ -294,4 +294,39 @@ export class AuthService {
             changedAt: new Date(),
         });
     }
+
+
+    // ================ FORGOT PASSWORD LOGIC ============
+    async forgotPassword(forgotPasswordDto: ForgotPasswordDto, ipAddress?: string): Promise<void> {
+        const { email } = forgotPasswordDto;
+        
+        const user = await this.usersService.findByEmail(email);
+        if(!user) {
+            // we will not reveal existence of email.
+            return;
+        }
+
+        // Generate passwordreset token
+        const resetToken = this.generateSecureToken();
+        await this.cacheManager.set(
+            `password_reset:${resetToken}`,
+            user.id,
+            this.parseExpiration(this.PASSWORD_RESET_TOKEN_EXPIRATION),
+        );
+
+        // Log the password reset request
+        await this.securityService.logEvent({
+            eventType: this.securityService.PASSWORD_RESET_REQUESTED,
+            userId: user.id,
+            ipAddress,
+            description: 'Password reset requested',
+        });
+
+        // Publish password request event.
+        await this.eventsService.publishPasswordResetRequested({
+            userId: user.id,
+            email: user.email,
+            resetToken,
+        });
+    }
 }
