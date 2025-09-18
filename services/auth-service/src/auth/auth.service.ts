@@ -211,4 +211,39 @@ export class AuthService {
             logoutTime: new Date(),
         });
     }
+
+    // ============== REFRESH TOKEN ==================
+    async refreshToken(refreshToken: string, deviceFingerprint?: string, ipAddress?: string): Promise<AuthResponse> {
+        const tokenRecord = await this.usersService.findRefreshToken(refreshToken);
+
+        if(!tokenRecord || !tokenRecord.isValid()) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        const user = await this.userService.fingById(tokenRecord.userId);
+        if (!user || !user.canAttemptLogin()) {
+            throw new UnauthorizedException('User account is not accessible');
+        }
+
+        // revoing the used refresh token.
+        await this.revokeRefreshToken(refreshToken);
+
+        // Generate new tokens.
+        const tokens = await this.generateToken(user, deviceFingerprint, ipAddress)
+
+        // Log token refresh
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.TOKEN_REFRESHED,
+            userId: user.id,
+            ipAddress,
+            deviceFingerprint,
+            description: 'Access token refreshed'
+        });
+
+        return {
+            ...tokens,
+            user: this.sanitizeUser(user),
+            expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
+        };
+    }
 }
