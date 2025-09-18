@@ -409,4 +409,52 @@ export class AuthService {
             verifiedAt: new Date(),
         });
     }
+
+
+
+
+
+    // ========== SOME HELPER METHODS ================
+private async generateTokens(user: User, deviceFingerprint?:string, ipAddress?: string, userAgent?: string) {
+    const payload = {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+    };
+
+    // Generate access token
+    const accessToken = this.jwtService.sign(payload, {
+        expiresIn: this.JWT_ACCESS_TOKEN_EXPIRATION,
+    });
+
+    // Generate refresh token
+    const refreshTokenValue = this.generateSecureToken();
+    const refreshTokenExpiry = new Date();
+    refreshTokenExpiry.setTime(refreshTokenExpiry.getTime() +  this.parseExpiration(this.JWT_REFRESH_TOKEN_EXPIRATION));
+
+    // save refresh token to database
+    await this.usersService.createRefreshToken({
+        token: refreshTokenValue,
+        userId: user.id,
+        expiresat: refreshTokenExpiry,
+        deviceFingerprint,
+        ipAddress,
+        userAgent,
+    });
+
+    return {
+        accessToken,
+        refreshToken: refreshTokenValue,
+    };
 }
+
+private async handleFailedLogin()
+
+}
+
+
+
+
+
+
