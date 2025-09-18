@@ -9,9 +9,9 @@ import {
     HttpCode,
     HttpStatus
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, } from '@nestjs/swagger';
 import { ThrottleGuard } from '@nestjs/throttle';
-import { Request } from 'express';
+import express from 'express';
 
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -39,11 +39,35 @@ export class AuthController {
     @ApiOperation({ summary: 'Register a new user' })
     @ApiResponse({ status: 201, description: 'User registered successfully', type: AuthResponse })
     @ApiResponse({ status: 400, description: 'Bad request' })
-    @ApiResponse({ ststus: 409, description: 'User already exists' })
-    async register(@Body() registerDto:RegisterDto, @Req() req: Request): Promise<AuthResponse> {
+    @ApiResponse({ status: 409, description: 'User already exists' })
+    async register(@Body() registerDto:RegisterDto, @Req() req: express.Request): Promise<AuthResponse> {
         const deviceFingerprint = req.headers['x-device-fingerprint'] as string;
         const ipAddress = req.ip;
 
         return this.authService.register(registerDto, deviceFingerprint, ipAddress);
+    }
+
+    @Post('login')
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(LocalAuthGuard)
+    @ApiOperation({ summary: 'Login User' })
+    @ApiResponse({ status: 200, description: 'Login successful', type: AuthResponse })
+    @ApiResponse({ status: 401, description: 'Invalid credentials' })
+    async login(@Body() loginDto: LoginDto, @Req() req: Request): Promise<AuthResponse> {
+        const deviceFingerprint = req.headers['x-device-fingerprint'] as string;
+        const ipAddress = req.ip;
+        const userAgent = req.headers['user-agent'];
+
+        return this.authService.login(loginDto, deviceFingerprint, ipAddress, userAgent);
+    }
+
+    @Post('logout')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Logout user' })
+    @ApiResponse({ status: 204, description: 'Logout successful' })
+    async logout(@GetUser() user: User, @Body('refreshToken') refreshToken?: string): Promise<void> {
+        await this.authService.logout(user.id, refreshToken);
     }
 }
