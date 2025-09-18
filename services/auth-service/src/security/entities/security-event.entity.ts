@@ -39,7 +39,7 @@ export class SecurityEvent {
     @Column({ nullable: true })
     userId: string;
 
-    @ManyToOne(() => User, user => user.securityEvents, { onDelete: 'SET NULL' })
+    @ManyToOne(() => User, (user) => user.securityEvents, { onDelete: 'SET NULL' })
     @JoinColumn({ name: 'userId' })
     user: User;
 
