@@ -70,4 +70,16 @@ export class AuthController {
     async logout(@GetUser() user: User, @Body('refreshToken') refreshToken?: string): Promise<void> {
         await this.authService.logout(user.id, refreshToken);
     }
+
+    @Post('refresh')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Refresh access token' })
+    @ApiResponse({ status: 200, description: 'Token refreshed successfuly' })
+    @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+    async refresh(@Body('refreshToken') refreshToken: string, @Req() req: Request): Promise<AuthResponse> {
+        const deviceFingerPrint = req.headers['x-device-fingerprint'] as string;
+        const ipAddress = req.ip;
+
+        return this.authService.refreshToken(refreshToken, deviceFingerPrint, ipAddress);
+    }
 }
