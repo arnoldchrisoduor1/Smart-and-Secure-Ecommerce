@@ -247,6 +247,8 @@ export class AuthService {
         };
     }
 
+
+    // ============= RESET PASSWORD ====================
     async changePassword(userId: string, changePasswordDto: ChangePasswordDto): Promise<void> {
         const { currentPassword, newPassword } = changePasswordDto;
 
@@ -328,5 +330,51 @@ export class AuthService {
             email: user.email,
             resetToken,
         });
+    }
+
+
+    // =================== RESET PASSWORD LOGIC ============
+    async resetPassword(resetPasswordDto: ResetPasswordDto, ipAddress?: string): Promise<void> {
+        const { token, newPassword } = resetPasswordDto;
+        // validating the reset token
+        const userId = await this.cacheManager.get<string>(`password_reset:${token}`);
+        if(!userId) {
+            throw new UnauthorizedException('Invalid or expired reset token');
+        }
+
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        // validate new password strength
+        this.validatePasswordStrength(newPassword);
+
+        // hash new password.
+        const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+        // update password.
+        await this.usersService.updatePassword(userId, newPasswordHash);
+
+        // remove reset token.
+        await this.cacheManager.del(`password_reset:${token}`);
+
+        // revole all refresh tokens for security
+        await this.revokeAllRefreshToken(userId);
+
+        // Log password reset completion.
+        await this.securityService.logEvent({
+            eventType: SecurityEventType.PASSWORD_RESET_COMPLETED,
+            userId,
+            ipAddress,
+            description: 'Password reset completed',
+        });
+
+        // log the password reset completed event.
+        await this.eventsService.publishPasswordResetCompleted({
+            userId,
+            email: user.email,
+            resetAt: new Date(),
+        })
     }
 }
