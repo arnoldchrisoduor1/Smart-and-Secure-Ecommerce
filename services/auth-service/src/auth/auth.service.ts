@@ -490,6 +490,22 @@ private async handleFailedLogin(email: string, ipAddress?: string, deviceFingerp
     });
 }
 
+private async checkSuspiciousLogin(user: User, deviceFingerprint?: string, ipAddress?: string): Promise<boolean> {
+    // check if the device fingerprint is new.
+    const isNewDevice = deviceFingerprint && !user.deviceFingerprints?:includes(deviceFingerprint);
+
+
+    // checking if the device ip has chnged significantly.
+    const isNewLocation = ipAddress &&user.lastLoginIp && user.lastLoginIp !== ipAddress;
+
+
+    // check the time since last login.
+    const timeSinceLastLogin = user.lastLoginAt ? Date.now() - user.lastLoginAt.getTime() : Infinity;
+    const isTooQuick = timeSinceLastLogin < 60000; //less tha 1 minute.
+
+    return isNewDevice || (isNewLocation && isTooQuick);
+}
+
 }
 
 
