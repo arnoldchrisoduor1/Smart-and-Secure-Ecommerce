@@ -540,6 +540,14 @@ private async generateAndSendOtp(user: User): Promise<string> {
     return otpCode;
 }
 
+private async revokeRefreshToken(refreshToken: string): Promise<void> {
+    await this.usersService.revokeAllRefreshToken(refreshToken);
+}
+
+private async revokeAllRefreshTokens(userId: string): Promise<void> {
+    await this.usersService.revokeAllRefreshTokens(userId);
+}
+
 }
 
 
