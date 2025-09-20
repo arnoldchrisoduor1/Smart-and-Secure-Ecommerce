@@ -124,7 +124,7 @@ export class AuthController {
 
     @Get('me')
     @UseGuards(JwtAuthGuard)
-    @ApiOperation({ summary: 'Gte current user info' })
+    @ApiOperation({ summary: 'Get current user info' })
     @ApiResponse({ status: 200, description: 'User info retrieved succesfully' })
     getCurrentUser(@GetUser() user: User) {
         return user;

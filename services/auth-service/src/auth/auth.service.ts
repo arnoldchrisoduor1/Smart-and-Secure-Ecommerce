@@ -589,7 +589,7 @@ private parseExpiration(expiration: string): number {
     }
 }
 
-private sanitizeUse(user: User) {
+private sanitizeUser(user: User) {
     const { passwordHash, mfaSecret, ...sanitizedUser } = user;
     return sanitizedUser;
 }
@@ -604,9 +604,3 @@ async validateUser(email: string, password: string): Promise<User | null> {
 }
 
 }
-
-
-
-
-
-
