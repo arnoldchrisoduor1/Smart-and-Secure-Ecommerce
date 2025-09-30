@@ -50,6 +50,8 @@ export class AuthService {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
+        console.log("Attempting User Registration");
+
         // creating the new user.
         const user = await this.usersService.create({
             email,
@@ -84,6 +86,8 @@ export class AuthService {
 
         // Generating tokens.
         const tokens = await this.generateTokens(user, deviceFingerprint, ipAddress);
+
+        console.log("User Registered Successfully");
 
 
         return {
