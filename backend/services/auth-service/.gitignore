@@ -1,0 +1,8 @@
+node_modules
+
+dist
+.env.production
+.env.local
+.env.example
+.env.docker
+.env
