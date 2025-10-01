@@ -99,7 +99,7 @@ export class User {
     }
 
     canAttemptLogin(): boolean {
-        
-        return !this.isLocked() && this.status === UserStatus.ACTIVE;
+        return !this.isLocked();
+        // return !this.isLocked() && this.status === UserStatus.ACTIVE;
     }
 }

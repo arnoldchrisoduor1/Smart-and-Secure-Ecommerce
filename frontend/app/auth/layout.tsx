@@ -20,7 +20,7 @@ export default function RootLayout({
         {/* If you want navbar on all pages including register */}
         {/* <Navbar /> */}
         
-        <main className="flex- m-20">
+        <main className="flex-grow m-5 md:m-10 lg:m-20 ">
           {children}
         </main>
         

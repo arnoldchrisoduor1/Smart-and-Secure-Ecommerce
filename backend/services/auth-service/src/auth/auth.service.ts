@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -24,8 +24,10 @@ export class AuthService {
     private readonly JWT_REFRESH_TOKEN_EXPIRATION = '7d';
     private readonly PASSWORD_RESET_TOKEN_EXPIRATION = '1h';
     private readonly EMAIL_VERIFICATION_TOKEN_EXPIRATION = '24h';
-    private readonly MAX_FAILED_ATTEMPTS = 7;
+    private readonly MAX_FAILED_ATTEMPTS = 10;
     private readonly LOCKOUT_DURATION_MINUTES = 30;
+
+    private readonly logger = new Logger(AuthService.name);
 
     constructor (
         private readonly usersService: UsersService,
@@ -50,7 +52,7 @@ export class AuthService {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
-        console.log("Attempting User Registration");
+        this.logger.log("Attempting User Registration");
 
         // creating the new user.
         const user = await this.usersService.create({
@@ -87,7 +89,7 @@ export class AuthService {
         // Generating tokens.
         const tokens = await this.generateTokens(user, deviceFingerprint, ipAddress);
 
-        console.log("User Registered Successfully");
+        this.logger.log("User Registered Successfully");
 
 
         return {
@@ -100,19 +102,19 @@ export class AuthService {
     }
 
 
-    // =============== LOGIN ===========================
+        // =============== LOGIN ===========================
     async login(loginDto: LoginDto, deviceFingerprint?: string, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
         const { email, password } = loginDto;
 
-        // Find user.
+        // Find user
         const user = await this.usersService.findByEmail(email);
         if (!user) {
             await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'User not found');
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        // checking if an account is locked.
-        if(user.isLocked()) {
+        // Check if account is locked
+        if (user.isLocked()) {
             await this.securityService.logEvent({
                 eventType: SecurityEventType.LOGIN_FAILED,
                 userId: user.id,
@@ -120,32 +122,40 @@ export class AuthService {
                 deviceFingerprint,
                 description: 'Login attempted on locked account',
             });
-            throw new UnauthorizedException('Account is temporarily locked due to too many failed attempts');
+        throw new UnauthorizedException('Account is temporarily locked due to too many failed attempts');
         }
 
-        // checkig if the user can login.
-        if(!user.canAttemptLogin()) {
-            await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'Account status prevents login', user.id);
+        // Check if user can login
+        if (!user.canAttemptLogin()) {
+            await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'Account status prevents login');
+            throw new UnauthorizedException('Account is not active');
+        }
+
+        // Validate password
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isPasswordValid) {
+            await this.handleFailedLogin(email, ipAddress, deviceFingerprint, 'Invalid password', user.id);
             throw new UnauthorizedException('Invalid credentials');
         }
 
-        // checking for suspicious login.
+        // Check for suspicious login
         const isSuspicious = await this.checkSuspiciousLogin(user, deviceFingerprint, ipAddress);
-        if (isSuspicious) {
+            if (isSuspicious) {
             await this.handleSuspiciousLogin(user, deviceFingerprint, ipAddress);
-            // will continue with loggin in bt flag for monitoring.
+            // Continue with login but flag for monitoring
         }
 
-        // Reset failed attempts on succesful login
+        // Reset failed attempts on successful login
         if (user.failedLoginAttempts > 0) {
             await this.usersService.resetFailedAttempts(user.id);
         }
 
+        // Update last login info
         await this.usersService.updateLastLogin(user.id, ipAddress);
 
-        // Update device fingerprints.
-        if(deviceFingerprint && !user.deviceFingerprints?.includes(deviceFingerprint)) {
-            await this.usersService.addDeviceFingerprint(user.id, deviceFingerprint)
+        // Update device fingerprints
+        if (deviceFingerprint && !user.deviceFingerprints?.includes(deviceFingerprint)) {
+            await this.usersService.addDeviceFingerprint(user.id, deviceFingerprint);
         }
 
         // Log successful login
@@ -155,28 +165,28 @@ export class AuthService {
             ipAddress,
             deviceFingerprint,
             userAgent,
-            description: 'User logged in successfully'
+            description: 'User logged in successfully',
         });
 
-        // check if MFA is required.
-        if(user.mfaEnabled) {
-            // generating and sending OTP.
+        // Check if MFA is required
+        if (user.mfaEnabled) {
+            // Generate and send OTP
             const otpCode = await this.generateAndSendOtp(user);
-
+            
             return {
                 accessToken: '',
                 refreshToken: '',
                 user: this.sanitizeUser(user),
                 expiresIn: 0,
                 requiresMfa: true,
-                otpSent:true,
+                otpSent: true,
             };
         }
 
-        // Generating the tokens.
-        const tokens  = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
+        // Generate tokens
+        const tokens = await this.generateTokens(user, deviceFingerprint, ipAddress, userAgent);
 
-        // publishing the login event.
+        // Publish login event
         await this.eventsService.publishUserLogin({
             userId: user.id,
             email: user.email,
@@ -187,10 +197,10 @@ export class AuthService {
 
         return {
             ...tokens,
-            user: this.sanitizeUser(user),
-            expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
             requiresMfa: false,
             otpSent: false,
+            user: this.sanitizeUser(user),
+            expiresIn: this.parseExpiration(this.JWT_ACCESS_TOKEN_EXPIRATION),
         };
     }
 
