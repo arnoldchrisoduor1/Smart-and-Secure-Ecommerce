@@ -102,7 +102,7 @@ export class AuthService {
     }
 
 
-        // =============== LOGIN ===========================
+        // ==================== LOGIN ===========================
     async login(loginDto: LoginDto, deviceFingerprint?: string, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
         const { email, password } = loginDto;
 
@@ -194,7 +194,7 @@ export class AuthService {
             deviceFingerprint,
             loginTime: new Date(),
         });
-
+ 
         return {
             ...tokens,
             requiresMfa: false,
@@ -205,7 +205,7 @@ export class AuthService {
     }
 
 
-    // ================ LOGOUT ======================
+    // ==================== LOGOUT =============================
     async logout(userId: string, refreshToken?: string): Promise<void> {
         // we'll revoke the refresh token.
         if(refreshToken) {
@@ -319,7 +319,7 @@ export class AuthService {
     }
 
 
-    // ================ FORGOT PASSWORD LOGIC ============
+    // ================ FORGOT PASSWORD LOGIC ======================
     async forgotPassword(forgotPasswordDto: ForgotPasswordDto, ipAddress?: string): Promise<void> {
         const { email } = forgotPasswordDto;
         
