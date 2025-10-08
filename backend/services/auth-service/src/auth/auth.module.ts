@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
@@ -18,9 +19,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     SecurityModule,
     EventsModule,
     ConfigModule,
-    CacheModule.register({   // 👈 this provides CACHE_MANAGER
-      isGlobal: true,        // optional: makes cache available everywhere
-      ttl: 60,               // default TTL in seconds
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => ({
+        store: await redisStore({
+          socket: {
+            host: config.get<string>('REDIS_HOST') || 'localhost',
+            port: config.get<number>('REDIS_PORT') || 6379,
+          },
+          password: config.get<string>('REDIS_PASSWORD'),
+          ttl: 60, // default in seconds
+        }),
+      }),
     }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
