@@ -436,7 +436,7 @@ export class AuthService {
 
 
 
-    // ========== SOME HELPER METHODS ================
+    // ======================== SOME HELPER METHODS ======================
 private async generateTokens(user: User, deviceFingerprint?:string, ipAddress?: string, userAgent?: string) {
     const payload = {
         sub: user.id,

@@ -32,16 +32,21 @@ import { RefreshToken } from './auth/entities/refresh-token.entity';
         synchronize: true, // ❗ will turn off in production
       }),
     }),
-    
+
     // --- 2. THROTTLER FIX (TYPE ERROR CORRECTED) ---
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      // CORRECTED: Must return an object with 'ttl' and 'limit' properties
       useFactory: (config: ConfigService) => ({
-        // Global rate limit: 10 requests per 60 seconds (default values)
-        ttl: config.get<number>('THROTTLE_TTL', 60),
-        limit: config.get<number>('THROTTLE_LIMIT', 10),
+        // 🚨 ADD THE THROTTLERS ARRAY HERE
+        throttlers: [
+          {
+            name: 'default', // Optional but recommended
+            // Global rate limit: 10 requests per 60 seconds (default values)
+            ttl: config.get<number>('THROTTLE_TTL', 60),
+            limit: config.get<number>('THROTTLE_LIMIT', 10),
+          },
+        ],
       }),
     }),
 
@@ -85,7 +90,10 @@ export class AppModule implements OnModuleInit {
 
   onModuleInit() {
     console.log('🔎 Loaded ENV values:');
-    console.log('DATABASE_URL IS SET:', !!this.configService.get('DATABASE_URL'));
+    console.log(
+      'DATABASE_URL IS SET:',
+      !!this.configService.get('DATABASE_URL'),
+    );
     console.log('REDIS_HOST:', this.configService.get('REDIS_HOST'));
     console.log('REDIS_PORT:', this.configService.get('REDIS_PORT'));
     console.log('KAFKA_BROKER:', this.configService.get('KAFKA_BROKER'));
