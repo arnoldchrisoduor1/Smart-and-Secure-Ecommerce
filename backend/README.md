@@ -6,3 +6,7 @@ pnpm --filter auth-service start:dev
 
 # Start all services at once in parallel
 pnpm start:all
+
+
+# Starting the docker containers
+docker compose -f docker-compose.infrastructure.yml up -d
