@@ -85,7 +85,7 @@ services:
       POSTGRES_USER: cart_service
       POSTGRES_PASSWORD: cart_service_pass
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
       - cart_postgres_data:/var/lib/postgresql/data
     networks:
@@ -100,7 +100,7 @@ volumes:
   shared_redis_data:
   auth_postgres_data:
   catalog_postgres_data:
-  cart_data_data:
+  cart_postgres_data:
 
 networks:
   ecommerce_network:
