@@ -76,10 +76,31 @@ services:
       timeout: 5s
       retries: 5
 
+
+  cart_postgres:
+    image: postgres:15-alpine
+    container_name: cart_postgres
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: cart_service
+      POSTGRES_PASSWORD: cart_service_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - cart_postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cart_service -d cart_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   shared_redis_data:
   auth_postgres_data:
   catalog_postgres_data:
+  cart_data_data:
 
 networks:
   ecommerce_network:
