@@ -96,11 +96,32 @@ services:
       timeout: 5s
       retries: 5
 
+
+  order_postgres:
+    image: postgres:15-alpine
+    container_name: order_postgres
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order_service
+      POSTGRES_PASSWORD: order_service_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - order_postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_service -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   shared_redis_data:
   auth_postgres_data:
   catalog_postgres_data:
   cart_postgres_data:
+  order_postgres_data:
 
 networks:
   ecommerce_network:
