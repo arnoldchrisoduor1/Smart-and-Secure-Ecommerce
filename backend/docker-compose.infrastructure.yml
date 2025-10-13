@@ -116,12 +116,32 @@ services:
       timeout: 5s
       retries: 5
 
+  payment_postgres:
+    image: postgres:15-alpine
+    container_name: payment_postgres
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_service
+      POSTGRES_PASSWORD: payment_service_pass
+    ports:
+      - "5437:5432"
+    volumes:
+      - payment_postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_service -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   shared_redis_data:
   auth_postgres_data:
   catalog_postgres_data:
   cart_postgres_data:
   order_postgres_data:
+  payment_postgres_data:
 
 networks:
   ecommerce_network:
