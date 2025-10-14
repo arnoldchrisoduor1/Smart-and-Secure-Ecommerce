@@ -82,7 +82,7 @@ export class User {
     deviceFingerprints: string[];
 
     @CreateDateColumn()
-    createAt: Date;
+    createdAt: Date;
 
     @UpdateDateColumn()
     updatedAt: Date;
