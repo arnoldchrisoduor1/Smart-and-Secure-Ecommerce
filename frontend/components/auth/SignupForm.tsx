@@ -1,10 +1,10 @@
-'use client'
-
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import Button from '../ButtonComponent'
 import Input from '../InputComponent'
+import { useAuthStore } from '@/store/authStore'
+import toast from 'react-hot-toast'
 
 interface SignupFormProps {
   onSwitchToLogin: () => void
@@ -20,24 +20,30 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSignupSucces
     confirmPassword: ''
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const { register, isLoading, error: authError, clearError } = useAuthStore()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+    
+    if (authError) {
+      clearError()
     }
   }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.firstName) {
+    if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required'
     }
 
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid'
@@ -59,21 +65,26 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSignupSucces
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateForm()) return
+  // In SignupForm.tsx - update the handleSubmit function
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  if (!validateForm()) return
 
-    setIsLoading(true)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      console.log('Signup data:', formData)
-      onSignupSuccess()
-    } catch (error) {
-      setErrors({ submit: 'Registration failed. Please try again.' })
-    } finally {
-      setIsLoading(false)
-    }
+  try {
+    await register({
+      email: formData.email,
+      password: formData.password,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      role: 'admin'
+    })
+    
+    toast.success('Account created successfully! Please check your email to verify your account.')
+    onSignupSuccess()
+  } catch (error) {
+    console.error('Signup error:', error)
   }
+}
 
   return (
     <motion.div
@@ -141,13 +152,13 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin, onSignupSucces
           placeholder="••••••••"
         />
 
-        {errors.submit && (
+        {authError && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-red-600 text-sm text-center"
           >
-            {errors.submit}
+            {authError}
           </motion.p>
         )}
 

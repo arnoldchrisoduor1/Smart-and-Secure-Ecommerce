@@ -1,69 +1,77 @@
-'use client'
-
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import Button from '../ButtonComponent'
-import Input from '../InputComponent'
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import Button from "../ButtonComponent";
+import Input from "../InputComponent";
+import { useAuthStore } from "@/store/authStore";
+import toast from "react-hot-toast";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void
   onSwitchToForgotPassword: () => void
+  onShowVerification: (email: string) => void
   onLoginSuccess: () => void
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ 
-  onSwitchToSignup, 
+const LoginForm: React.FC<LoginFormProps> = ({
+  onSwitchToSignup,
   onSwitchToForgotPassword,
-  onLoginSuccess 
+  onLoginSuccess,
+  onShowVerification,
 }) => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+    email: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { login, isLoading, error: authError, clearError } = useAuthStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-  }
+    if (authError) {
+      clearError();
+    }
+  };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid'
+      newErrors.email = "Email is invalid";
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = "Password is required";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateForm()) return
+    e.preventDefault();
+    if (!validateForm()) return;
 
-    setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      console.log('Login data:', formData)
-      onLoginSuccess()
+      await login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      toast.success(`Welcome back, ${formData.email}!`);
+      onLoginSuccess();
     } catch (error) {
-      setErrors({ submit: 'Login failed. Please try again.' })
-    } finally {
-      setIsLoading(false)
+      // Error is handled in store and shown via toast from axios interceptor
+      console.error("Login error:", error);
     }
-  }
+  };
 
   return (
     <motion.div
@@ -99,15 +107,16 @@ const LoginForm: React.FC<LoginFormProps> = ({
           placeholder="••••••••"
         />
 
-        {errors.submit && (
+        {authError && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-red-600 text-sm text-center"
           >
-            {errors.submit}
+            {authError}
           </motion.p>
         )}
+
 
         <div className="flex justify-between items-center">
           <button
@@ -117,21 +126,23 @@ const LoginForm: React.FC<LoginFormProps> = ({
           >
             Forgot password?
           </button>
+          <button
+            type="button"
+            onClick={() => onShowVerification(formData.email)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            Resend verification?
+          </button>
         </div>
 
-        <Button
-          type="submit"
-          loading={isLoading}
-          className="w-full"
-          size="lg"
-        >
+        <Button type="submit" loading={isLoading} className="w-full" size="lg">
           Sign In
         </Button>
       </form>
 
       <div className="mt-6 text-center">
         <p className="text-gray-600">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <button
             onClick={onSwitchToSignup}
             className="text-indigo-600 hover:text-indigo-700 font-semibold"
@@ -141,7 +152,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </p>
       </div>
     </motion.div>
-  )
-}
+  );
+};
 
-export default LoginForm
+export default LoginForm;

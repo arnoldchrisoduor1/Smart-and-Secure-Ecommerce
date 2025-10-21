@@ -1,10 +1,10 @@
-'use client'
-
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Lock, ArrowLeft, CheckCircle } from 'lucide-react'
 import Button from '../ButtonComponent'
 import Input from '../InputComponent'
+import { useAuthStore } from '@/store/authStore'
+import toast from 'react-hot-toast'
 
 interface ResetPasswordFormProps {
   onSwitchToLogin: () => void
@@ -20,14 +20,13 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
     confirmPassword: ''
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  
+  const { resetPassword, isLoading, error: authError, clearError } = useAuthStore()
 
-  // Extract token from URL if provided
   useEffect(() => {
     if (token) {
       console.log('Token extracted:', token)
-      // Here you would validate the token with your backend
     }
   }, [token])
 
@@ -36,6 +35,9 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
     setFormData(prev => ({ ...prev, [name]: value }))
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+    if (authError) {
+      clearError()
     }
   }
 
@@ -62,15 +64,17 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
     e.preventDefault()
     if (!validateForm()) return
 
-    setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      console.log('Password reset data:', { token, ...formData })
+      await resetPassword({
+        token: token || '', // Use token from props or extract from URL
+        newPassword: formData.newPassword
+      })
+      
+      toast.success('Password reset successfully! You can now login with your new password.')
       setIsSuccess(true)
     } catch (error) {
-      setErrors({ submit: 'Password reset failed. Please try again.' })
-    } finally {
-      setIsLoading(false)
+      // Error is handled in store and shown via toast from axios interceptor
+      console.error('Reset password error:', error)
     }
   }
 
@@ -146,13 +150,13 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
           placeholder="••••••••"
         />
 
-        {errors.submit && (
+        {authError && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-red-600 text-sm text-center"
           >
-            {errors.submit}
+            {authError}
           </motion.p>
         )}
 

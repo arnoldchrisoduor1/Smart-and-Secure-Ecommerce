@@ -1,10 +1,10 @@
-'use client'
-
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, ArrowLeft } from 'lucide-react'
 import Button from '../ButtonComponent'
 import Input from '../InputComponent'
+import { useAuthStore } from '@/store/authStore'
+import toast from 'react-hot-toast'
 
 interface ForgotPasswordFormProps {
   onSwitchToLogin: () => void
@@ -17,7 +17,8 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 }) => {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const { forgotPassword, isLoading, error: authError, clearError } = useAuthStore()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,15 +31,13 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       return
     }
 
-    setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      console.log('Password reset email sent to:', email)
+      await forgotPassword(email)
+      toast.success('Password reset link sent to your email!')
       onResetSent()
     } catch (error) {
-      setError('Failed to send reset email. Please try again.')
-    } finally {
-      setIsLoading(false)
+      // Error is handled in store and shown via toast from axios interceptor
+      console.error('Forgot password error:', error)
     }
   }
 
@@ -71,8 +70,9 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           onChange={(e) => {
             setEmail(e.target.value)
             setError('')
+            if (authError) clearError()
           }}
-          error={error}
+          error={error || authError || ''}
           leftIcon={<Mail size={20} />}
           placeholder="your@email.com"
         />

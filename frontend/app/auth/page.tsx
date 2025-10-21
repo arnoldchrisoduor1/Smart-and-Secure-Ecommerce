@@ -7,12 +7,14 @@ import LoginForm from '@/components/auth/LoginForm'
 import SignupForm from '@/components/auth/SignupForm'
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm'
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm'
+import ResendVerification from '@/components/auth/ResendVerification'
 
-type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'success'
+type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'verify-email' | 'success'
 
 export default function AuthPage() {
-  const [currentView, setCurrentView] = useState<AuthView>('login')
+   const [currentView, setCurrentView] = useState<AuthView>('login')
   const [resetToken, setResetToken] = useState<string>('')
+  const [verificationEmail, setVerificationEmail] = useState<string>('')
 
   // Extract token from URL (for email verification links)
   React.useEffect(() => {
@@ -24,6 +26,10 @@ export default function AuthPage() {
       if (token && mode === 'resetPassword') {
         setResetToken(token)
         setCurrentView('reset-password')
+      } else if (token && mode === 'verifyEmail') {
+        // You might want to handle this differently or redirect to verify-email page
+        // For now, we'll keep the auth page flow
+        console.log('Email verification token detected:', token)
       }
     }
   }, [])
@@ -44,6 +50,12 @@ export default function AuthPage() {
         return {
           title: 'Reset Password',
           subtitle: 'We\'ll help you get back into your account quickly and securely.'
+        }
+
+      case 'verify-email':
+        return {
+          title: 'Verify Email',
+          subtitle: 'Resend verification email to activate your account.'
         }
       case 'reset-password':
         return {
@@ -74,6 +86,11 @@ export default function AuthPage() {
     // You could show a toast notification here
   }
 
+  const handleShowVerification = (email: string) => {
+    setVerificationEmail(email)
+    setCurrentView('verify-email')
+  }
+
   return (
     <AuthLayout {...getLayoutProps()}>
       <AnimatePresence mode="wait">
@@ -82,6 +99,7 @@ export default function AuthPage() {
             key="login"
             onSwitchToSignup={() => setCurrentView('signup')}
             onSwitchToForgotPassword={() => setCurrentView('forgot-password')}
+            onShowVerification={handleShowVerification}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
@@ -91,6 +109,14 @@ export default function AuthPage() {
             key="signup"
             onSwitchToLogin={() => setCurrentView('login')}
             onSignupSuccess={handleSignupSuccess}
+          />
+        )}
+
+         {currentView === 'verify-email' && (
+          <ResendVerification
+            key="verify-email"
+            email={verificationEmail}
+            onBackToLogin={() => setCurrentView('login')}
           />
         )}
 
